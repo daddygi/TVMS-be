@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { Apprehension } from '../models/apprehension.model';
-import { IApprehension, IApprehensionDocument, ImportResult, ApprehensionFilters } from '../types/apprehension.types';
+import { IApprehension, IApprehensionDocument, ImportResult, ApprehensionFilters, StatsFilters, StatsResponse } from '../types/apprehension.types';
 import { PaginationParams, PaginatedResponse } from '../types/pagination.types';
 import { ApprehensionFilterQuery } from '../types/mongo.types';
 import { excelDateToJSDate, excelTimeToString } from '../utils/excel.utils';
@@ -139,8 +139,80 @@ export const getApprehensionById = async (id: string): Promise<IApprehensionDocu
 
 const invalidateListCache = async (): Promise<void> => {
   await cacheDeletePattern(`${CACHE_KEYS.APPREHENSION_LIST}:*`);
+  await cacheDeletePattern(`${CACHE_KEYS.APPREHENSION_STATS}:*`);
 };
 
 const invalidateDetailCache = async (id: string): Promise<void> => {
   await cacheDeletePattern(`${CACHE_KEYS.APPREHENSION_DETAIL}:*${id}*`);
+};
+
+const buildStatsMatchStage = (filters: StatsFilters): Record<string, unknown> => {
+  const match: Record<string, unknown> = {};
+
+  if (filters.month) {
+    const [year, monthNum] = filters.month.split('-').map(Number);
+    const startDate = new Date(year, monthNum - 1, 1);
+    const endDate = new Date(year, monthNum, 0, 23, 59, 59, 999);
+    match.dateOfApprehension = { $gte: startDate, $lte: endDate };
+  } else if (filters.dateFrom || filters.dateTo) {
+    match.dateOfApprehension = {
+      ...(filters.dateFrom && { $gte: filters.dateFrom }),
+      ...(filters.dateTo && { $lte: filters.dateTo }),
+    };
+  }
+
+  if (filters.agency) {
+    match.agency = { $regex: filters.agency, $options: 'i' };
+  }
+  if (filters.violation) {
+    match.violation = { $regex: filters.violation, $options: 'i' };
+  }
+  if (filters.placeOfApprehension) {
+    match.placeOfApprehension = { $regex: filters.placeOfApprehension, $options: 'i' };
+  }
+
+  return match;
+};
+
+interface FacetResult {
+  total: { count: number }[];
+  agencies: { _id: string | null; count: number }[];
+  violations: { _id: string | null; count: number }[];
+  locations: { _id: string | null; count: number }[];
+}
+
+export const getStats = async (filters: StatsFilters): Promise<StatsResponse> => {
+  const matchStage = buildStatsMatchStage(filters);
+  const topLimit = Math.min(filters.topLimit || 5, 10);
+
+  const [result] = await Apprehension.aggregate<FacetResult>([
+    { $match: matchStage },
+    {
+      $facet: {
+        total: [{ $count: 'count' }],
+        agencies: [
+          { $group: { _id: '$agency', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: topLimit },
+        ],
+        violations: [
+          { $group: { _id: '$violation', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: topLimit },
+        ],
+        locations: [
+          { $group: { _id: '$placeOfApprehension', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: topLimit },
+        ],
+      },
+    },
+  ]);
+
+  return {
+    total: result.total[0]?.count || 0,
+    topAgencies: result.agencies.map(a => ({ agency: a._id || 'Unknown', count: a.count })),
+    topViolations: result.violations.map(v => ({ violation: v._id || 'Unknown', count: v.count })),
+    topLocations: result.locations.map(l => ({ location: l._id || 'Unknown', count: l.count })),
+  };
 };

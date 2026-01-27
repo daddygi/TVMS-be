@@ -8,6 +8,8 @@ const envSchema = z.object({
   PORT: z.string().default('3000').transform(Number),
   MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
 });
 
 const parsed = envSchema.safeParse(process.env);
