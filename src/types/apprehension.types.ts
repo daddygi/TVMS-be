@@ -48,3 +48,20 @@ export interface ApprehensionFilters {
   plateNumber?: string;
   driverName?: string;
 }
+
+export interface StatsFilters {
+  month?: string;           // YYYY-MM format
+  dateFrom?: Date;
+  dateTo?: Date;
+  agency?: string;
+  violation?: string;
+  placeOfApprehension?: string;
+  topLimit?: number;
+}
+
+export interface StatsResponse {
+  total: number;
+  topAgencies: { agency: string; count: number }[];
+  topViolations: { violation: string; count: number }[];
+  topLocations: { location: string; count: number }[];
+}

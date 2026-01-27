@@ -4,6 +4,7 @@ import {
   importApprehensions,
   listApprehensions,
   getApprehension,
+  getStatsController,
 } from '../../controllers/apprehension.controller';
 import { cacheMiddleware } from '../../middlewares/cache.middleware';
 import { CACHE_KEYS, CACHE_TTL } from '../../types/cache.types';
@@ -15,6 +16,12 @@ router.get(
   '/',
   cacheMiddleware({ keyPrefix: CACHE_KEYS.APPREHENSION_LIST, ttl: CACHE_TTL.LIST }),
   listApprehensions
+);
+
+router.get(
+  '/stats',
+  cacheMiddleware({ keyPrefix: CACHE_KEYS.APPREHENSION_STATS, ttl: CACHE_TTL.STATS }),
+  getStatsController
 );
 
 router.get(
