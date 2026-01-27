@@ -1,7 +1,9 @@
 import * as XLSX from 'xlsx';
 import { Apprehension } from '../models/apprehension.model';
-import { IApprehension, ImportResult } from '../types/apprehension.types';
+import { IApprehension, IApprehensionDocument, ImportResult } from '../types/apprehension.types';
 import { excelDateToJSDate, excelTimeToString } from '../utils/excel.utils';
+import { cacheDeletePattern } from './cache.service';
+import { CACHE_KEYS } from '../types/cache.types';
 
 type ExcelRow = (string | number | null)[];
 
@@ -58,9 +60,27 @@ export const importFromXlsx = async (buffer: Buffer): Promise<ImportResult> => {
 
   const result = await Apprehension.insertMany(records, { ordered: false });
 
+  await invalidateListCache();
+
   return {
     total: records.length,
     imported: result.length,
     skipped: records.length - result.length,
   };
+};
+
+export const getApprehensions = async (): Promise<IApprehensionDocument[]> => {
+  return Apprehension.find().sort({ createdAt: -1 });
+};
+
+export const getApprehensionById = async (id: string): Promise<IApprehensionDocument | null> => {
+  return Apprehension.findById(id);
+};
+
+const invalidateListCache = async (): Promise<void> => {
+  await cacheDeletePattern(`${CACHE_KEYS.APPREHENSION_LIST}:*`);
+};
+
+const invalidateDetailCache = async (id: string): Promise<void> => {
+  await cacheDeletePattern(`${CACHE_KEYS.APPREHENSION_DETAIL}:*${id}*`);
 };
