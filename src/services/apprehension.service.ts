@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx';
 import { Apprehension } from '../models/apprehension.model';
-import { IApprehension, IApprehensionDocument, ImportResult } from '../types/apprehension.types';
+import { IApprehension, IApprehensionDocument, ImportResult, ApprehensionFilters } from '../types/apprehension.types';
+import { PaginationParams, PaginatedResponse } from '../types/pagination.types';
+import { ApprehensionFilterQuery } from '../types/mongo.types';
 import { excelDateToJSDate, excelTimeToString } from '../utils/excel.utils';
 import { cacheDeletePattern } from './cache.service';
 import { CACHE_KEYS } from '../types/cache.types';
@@ -69,8 +71,66 @@ export const importFromXlsx = async (buffer: Buffer): Promise<ImportResult> => {
   };
 };
 
-export const getApprehensions = async (): Promise<IApprehensionDocument[]> => {
-  return Apprehension.find().sort({ createdAt: -1 });
+const buildFilterQuery = (filters: ApprehensionFilters): ApprehensionFilterQuery => {
+  const query: ApprehensionFilterQuery = {};
+
+  if (filters.dateFrom || filters.dateTo) {
+    query.dateOfApprehension = {
+      ...(filters.dateFrom && { $gte: filters.dateFrom }),
+      ...(filters.dateTo && { $lte: filters.dateTo }),
+    };
+  }
+
+  if (filters.agency) {
+    query.agency = { $regex: filters.agency, $options: 'i' };
+  }
+
+  if (filters.violation) {
+    query.violation = { $regex: filters.violation, $options: 'i' };
+  }
+
+  if (filters.mvType) {
+    query.mvType = { $regex: filters.mvType, $options: 'i' };
+  }
+
+  if (filters.plateNumber) {
+    query.plateNumber = { $regex: filters.plateNumber, $options: 'i' };
+  }
+
+  if (filters.driverName) {
+    query.$or = [
+      { 'driver.lastName': { $regex: filters.driverName, $options: 'i' } },
+      { 'driver.firstName': { $regex: filters.driverName, $options: 'i' } },
+    ];
+  }
+
+  return query;
+};
+
+export const getApprehensions = async (
+  filters: ApprehensionFilters,
+  pagination: PaginationParams
+): Promise<PaginatedResponse<IApprehensionDocument>> => {
+  const query = buildFilterQuery(filters);
+  const skip = (pagination.page - 1) * pagination.limit;
+
+  const [data, total] = await Promise.all([
+    Apprehension.find(query)
+      .sort({ dateOfApprehension: -1 })
+      .skip(skip)
+      .limit(pagination.limit),
+    Apprehension.countDocuments(query),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      totalPages: Math.ceil(total / pagination.limit),
+    },
+  };
 };
 
 export const getApprehensionById = async (id: string): Promise<IApprehensionDocument | null> => {

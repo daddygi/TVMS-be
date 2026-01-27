@@ -38,3 +38,13 @@ export interface ImportResult {
   imported: number;
   skipped: number;
 }
+
+export interface ApprehensionFilters {
+  dateFrom?: Date;
+  dateTo?: Date;
+  agency?: string;
+  violation?: string;
+  mvType?: string;
+  plateNumber?: string;
+  driverName?: string;
+}

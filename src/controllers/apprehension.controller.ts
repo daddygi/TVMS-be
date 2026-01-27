@@ -5,6 +5,8 @@ import {
   getApprehensionById,
 } from '../services/apprehension.service';
 import { AppError } from '../middlewares/errorHandler';
+import { ApprehensionFilters } from '../types/apprehension.types';
+import { DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../types/pagination.types';
 
 export const importApprehensions = async (
   req: Request,
@@ -28,13 +30,28 @@ export const importApprehensions = async (
 };
 
 export const listApprehensions = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const data = await getApprehensions();
-    res.json({ data });
+    const { dateFrom, dateTo, agency, violation, mvType, plateNumber, driverName } = req.query;
+
+    const filters: ApprehensionFilters = {
+      dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+      dateTo: dateTo ? new Date(dateTo as string) : undefined,
+      agency: agency as string,
+      violation: violation as string,
+      mvType: mvType as string,
+      plateNumber: plateNumber as string,
+      driverName: driverName as string,
+    };
+
+    const page = Math.max(1, parseInt(req.query.page as string) || DEFAULT_PAGE);
+    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit as string) || DEFAULT_LIMIT));
+
+    const result = await getApprehensions(filters, { page, limit });
+    res.json(result);
   } catch (error) {
     next(error);
   }
