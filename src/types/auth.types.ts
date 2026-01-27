@@ -20,6 +20,7 @@ export interface IRefreshTokenDocument extends IRefreshToken, Document {}
 
 export interface TokenPayload {
   userId: string;
+  username: string;
 }
 
 export interface AuthTokens {

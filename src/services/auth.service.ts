@@ -13,8 +13,8 @@ import {
 } from '../types/auth.types';
 import { AppError } from '../middlewares/errorHandler';
 
-const generateAccessToken = (userId: string): string => {
-  return jwt.sign({ userId } as TokenPayload, env.JWT_ACCESS_SECRET, {
+const generateAccessToken = (userId: string, username: string): string => {
+  return jwt.sign({ userId, username } as TokenPayload, env.JWT_ACCESS_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 };
@@ -44,7 +44,7 @@ export const login = async (username: string, password: string): Promise<AuthTok
     throw new AppError(401, 'Invalid credentials');
   }
 
-  const accessToken = generateAccessToken(user._id.toString());
+  const accessToken = generateAccessToken(user._id.toString(), user.username);
   const refreshToken = generateRefreshToken();
 
   await RefreshToken.create({
@@ -70,7 +70,12 @@ export const refresh = async (refreshToken: string): Promise<AuthTokens> => {
 
   await RefreshToken.deleteOne({ _id: storedToken._id });
 
-  const accessToken = generateAccessToken(storedToken.userId);
+  const user = await User.findById(storedToken.userId);
+  if (!user) {
+    throw new AppError(401, 'User not found');
+  }
+
+  const accessToken = generateAccessToken(user._id.toString(), user.username);
   const newRefreshToken = generateRefreshToken();
 
   await RefreshToken.create({
