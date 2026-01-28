@@ -1,4 +1,5 @@
 import { Document } from 'mongoose';
+import { z } from 'zod';
 
 export interface IDriver {
   lastName: string | null;
@@ -32,6 +33,63 @@ export interface IApprehension {
 }
 
 export interface IApprehensionDocument extends IApprehension, Document {}
+
+// Zod schemas for validation
+const driverSchema = z.object({
+  lastName: z.string().min(1, 'Driver last name is required'),
+  firstName: z.string().min(1, 'Driver first name is required'),
+}).strict();
+
+const confiscatedItemSchema = z.object({
+  type: z.string().min(1, 'Confiscated item type is required'),
+  number: z.string().min(1, 'Confiscated item number is required'),
+}).strict();
+
+export const createApprehensionSchema = z.object({
+  dateOfSubmission: z.coerce.date(),
+  dateOfApprehension: z.coerce.date(),
+  timeOfApprehension: z.string().min(1, 'Time of apprehension is required'),
+  agency: z.string().min(1, 'Agency is required'),
+  apprehendingOfficer: z.string().min(1, 'Apprehending officer is required'),
+  caseNumber: z.string().min(1, 'Case number is required'),
+  driver: driverSchema,
+  violation: z.string().min(1, 'Violation is required'),
+  confiscatedItem: confiscatedItemSchema,
+  mvType: z.string().min(1, 'MV type is required'),
+  plateNumber: z.string().min(1, 'Plate number is required'),
+  placeOfApprehension: z.string().min(1, 'Place of apprehension is required'),
+  // Optional fields
+  restrictionCode: z.string().nullable().optional(),
+  conditions: z.string().nullable().optional(),
+  nationality: z.string().nullable().optional(),
+  gender: z.string().nullable().optional(),
+  remarks: z.string().nullable().optional(),
+}).strict();
+
+export const updateApprehensionSchema = z.object({
+  dateOfSubmission: z.coerce.date().optional(),
+  dateOfApprehension: z.coerce.date().optional(),
+  timeOfApprehension: z.string().min(1).optional(),
+  agency: z.string().min(1).optional(),
+  apprehendingOfficer: z.string().min(1).optional(),
+  caseNumber: z.string().min(1).optional(),
+  driver: driverSchema.optional(),
+  violation: z.string().min(1).optional(),
+  confiscatedItem: confiscatedItemSchema.optional(),
+  mvType: z.string().min(1).optional(),
+  plateNumber: z.string().min(1).optional(),
+  placeOfApprehension: z.string().min(1).optional(),
+  restrictionCode: z.string().nullable().optional(),
+  conditions: z.string().nullable().optional(),
+  nationality: z.string().nullable().optional(),
+  gender: z.string().nullable().optional(),
+  remarks: z.string().nullable().optional(),
+}).strict().refine(data => Object.keys(data).length > 0, {
+  message: 'At least one field must be provided for update',
+});
+
+export type CreateApprehensionInput = z.infer<typeof createApprehensionSchema>;
+export type UpdateApprehensionInput = z.infer<typeof updateApprehensionSchema>;
 
 export interface ImportResult {
   total: number;

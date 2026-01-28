@@ -5,6 +5,9 @@ import {
   listApprehensions,
   getApprehension,
   getStatsController,
+  createApprehensionController,
+  updateApprehensionController,
+  deleteApprehensionController,
 } from '../../controllers/apprehension.controller';
 import { cacheMiddleware } from '../../middlewares/cache.middleware';
 import { CACHE_KEYS, CACHE_TTL } from '../../types/cache.types';
@@ -30,6 +33,11 @@ router.get(
   getApprehension
 );
 
+router.post('/', createApprehensionController);
 router.post('/import', upload.single('file'), importApprehensions);
+
+router.patch('/:id', updateApprehensionController);
+
+router.delete('/:id', deleteApprehensionController);
 
 export default router;

@@ -4,10 +4,23 @@ import {
   getApprehensions,
   getApprehensionById,
   getStats,
+  createApprehension,
+  updateApprehension,
+  deleteApprehension,
 } from '../services/apprehension.service';
 import { AppError } from '../middlewares/errorHandler';
-import { ApprehensionFilters, StatsFilters } from '../types/apprehension.types';
+import {
+  ApprehensionFilters,
+  StatsFilters,
+  createApprehensionSchema,
+  updateApprehensionSchema,
+} from '../types/apprehension.types';
 import { DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../types/pagination.types';
+import { ZodError } from 'zod';
+
+const formatZodError = (error: ZodError<unknown>): string => {
+  return error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join(', ');
+};
 
 export const importApprehensions = async (
   req: Request,
@@ -107,6 +120,69 @@ export const getStatsController = async (
 
     const stats = await getStats(filters);
     res.json({ data: stats });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createApprehensionController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const parsed = createApprehensionSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      throw new AppError(400, formatZodError(parsed.error));
+    }
+
+    const data = await createApprehension(parsed.data);
+    res.status(201).json({ data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateApprehensionController = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const parsed = updateApprehensionSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      throw new AppError(400, formatZodError(parsed.error));
+    }
+
+    const data = await updateApprehension(id, parsed.data);
+
+    if (!data) {
+      throw new AppError(404, 'Apprehension not found');
+    }
+
+    res.json({ data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteApprehensionController = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const deleted = await deleteApprehension(id);
+
+    if (!deleted) {
+      throw new AppError(404, 'Apprehension not found');
+    }
+
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

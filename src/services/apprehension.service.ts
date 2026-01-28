@@ -1,6 +1,15 @@
 import * as XLSX from 'xlsx';
 import { Apprehension } from '../models/apprehension.model';
-import { IApprehension, IApprehensionDocument, ImportResult, ApprehensionFilters, StatsFilters, StatsResponse } from '../types/apprehension.types';
+import {
+  IApprehension,
+  IApprehensionDocument,
+  ImportResult,
+  ApprehensionFilters,
+  StatsFilters,
+  StatsResponse,
+  CreateApprehensionInput,
+  UpdateApprehensionInput,
+} from '../types/apprehension.types';
 import { PaginationParams, PaginatedResponse } from '../types/pagination.types';
 import { ApprehensionFilterQuery } from '../types/mongo.types';
 import { excelDateToJSDate, excelTimeToString } from '../utils/excel.utils';
@@ -135,6 +144,63 @@ export const getApprehensions = async (
 
 export const getApprehensionById = async (id: string): Promise<IApprehensionDocument | null> => {
   return Apprehension.findById(id);
+};
+
+const calculateDaysInterval = (dateOfSubmission: Date, dateOfApprehension: Date): number => {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((dateOfSubmission.getTime() - dateOfApprehension.getTime()) / msPerDay);
+};
+
+export const createApprehension = async (
+  input: CreateApprehensionInput
+): Promise<IApprehensionDocument> => {
+  const daysInterval = calculateDaysInterval(input.dateOfSubmission, input.dateOfApprehension);
+
+  const apprehension = await Apprehension.create({
+    ...input,
+    daysInterval,
+  });
+
+  await invalidateListCache();
+
+  return apprehension;
+};
+
+export const updateApprehension = async (
+  id: string,
+  input: UpdateApprehensionInput
+): Promise<IApprehensionDocument | null> => {
+  const existing = await Apprehension.findById(id);
+  if (!existing) return null;
+
+  const updateData: Partial<IApprehension> = { ...input };
+
+  // Recalculate daysInterval if either date changes
+  const dateOfSubmission = input.dateOfSubmission ?? existing.dateOfSubmission;
+  const dateOfApprehension = input.dateOfApprehension ?? existing.dateOfApprehension;
+
+  if (dateOfSubmission && dateOfApprehension) {
+    updateData.daysInterval = calculateDaysInterval(dateOfSubmission, dateOfApprehension);
+  }
+
+  const updated = await Apprehension.findByIdAndUpdate(id, updateData, { new: true });
+
+  await invalidateListCache();
+  await invalidateDetailCache(id);
+
+  return updated;
+};
+
+export const deleteApprehension = async (id: string): Promise<boolean> => {
+  const result = await Apprehension.findByIdAndDelete(id);
+
+  if (result) {
+    await invalidateListCache();
+    await invalidateDetailCache(id);
+    return true;
+  }
+
+  return false;
 };
 
 const invalidateListCache = async (): Promise<void> => {
