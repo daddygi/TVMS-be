@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../services/auth.service';
 import { AppError } from './errorHandler';
-import { TokenPayload } from '../types/auth.types';
+import { TokenPayload, Role } from '../types/auth.types';
 
 declare global {
   namespace Express {
@@ -27,4 +27,13 @@ export const authenticate = (req: Request, _res: Response, next: NextFunction): 
   } catch (error) {
     next(error);
   }
+};
+
+export const authorize = (...allowedRoles: Role[]) => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      throw new AppError(403, 'Insufficient permissions');
+    }
+    next();
+  };
 };

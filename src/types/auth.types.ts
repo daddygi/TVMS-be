@@ -1,8 +1,11 @@
 import { Document } from 'mongoose';
 
+export type Role = 'admin' | 'user';
+
 export interface IUser {
   username: string;
   password: string;
+  role: Role;
 }
 
 export interface IUserDocument extends IUser, Document {
@@ -21,6 +24,7 @@ export interface IRefreshTokenDocument extends IRefreshToken, Document {}
 export interface TokenPayload {
   userId: string;
   username: string;
+  role: Role;
 }
 
 export interface AuthTokens {

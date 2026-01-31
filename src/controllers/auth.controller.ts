@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { register, login, refresh, logout } from '../services/auth.service';
+import { login, refresh, logout } from '../services/auth.service';
 import { AppError } from '../middlewares/errorHandler';
 import { REFRESH_TOKEN_EXPIRY_MS } from '../types/auth.types';
 
@@ -20,33 +20,6 @@ const clearRefreshTokenCookie = (res: Response): void => {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
   });
-};
-
-export const registerUser = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      throw new AppError(400, 'Username and password are required');
-    }
-
-    if (password.length < 8) {
-      throw new AppError(400, 'Password must be at least 8 characters');
-    }
-
-    const user = await register(username, password);
-
-    res.status(201).json({
-      message: 'User registered successfully',
-      data: { id: user._id, username: user.username },
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
 export const loginUser = async (

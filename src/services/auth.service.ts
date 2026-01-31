@@ -5,32 +5,22 @@ import { User } from '../models/user.model';
 import { RefreshToken } from '../models/refreshToken.model';
 import { env } from '../config/env';
 import {
-  IUserDocument,
   TokenPayload,
   AuthTokens,
   ACCESS_TOKEN_EXPIRY,
   REFRESH_TOKEN_EXPIRY_MS,
+  Role,
 } from '../types/auth.types';
 import { AppError } from '../middlewares/errorHandler';
 
-const generateAccessToken = (userId: string, username: string): string => {
-  return jwt.sign({ userId, username } as TokenPayload, env.JWT_ACCESS_SECRET, {
+const generateAccessToken = (userId: string, username: string, role: Role): string => {
+  return jwt.sign({ userId, username, role } as TokenPayload, env.JWT_ACCESS_SECRET, {
     expiresIn: ACCESS_TOKEN_EXPIRY,
   });
 };
 
 const generateRefreshToken = (): string => {
   return crypto.randomBytes(64).toString('hex');
-};
-
-export const register = async (username: string, password: string): Promise<IUserDocument> => {
-  const existingUser = await User.findOne({ username });
-  if (existingUser) {
-    throw new AppError(409, 'Username already exists');
-  }
-
-  const user = await User.create({ username, password });
-  return user;
 };
 
 export const login = async (username: string, password: string): Promise<AuthTokens> => {
@@ -44,7 +34,9 @@ export const login = async (username: string, password: string): Promise<AuthTok
     throw new AppError(401, 'Invalid credentials');
   }
 
-  const accessToken = generateAccessToken(user._id.toString(), user.username);
+  // Treat undefined role as 'admin' for backwards compatibility with existing users
+  const role: Role = user.role || 'admin';
+  const accessToken = generateAccessToken(user._id.toString(), user.username, role);
   const refreshToken = generateRefreshToken();
 
   await RefreshToken.create({
@@ -75,7 +67,9 @@ export const refresh = async (refreshToken: string): Promise<AuthTokens> => {
     throw new AppError(401, 'User not found');
   }
 
-  const accessToken = generateAccessToken(user._id.toString(), user.username);
+  // Treat undefined role as 'admin' for backwards compatibility with existing users
+  const role: Role = user.role || 'admin';
+  const accessToken = generateAccessToken(user._id.toString(), user.username, role);
   const newRefreshToken = generateRefreshToken();
 
   await RefreshToken.create({
