@@ -18,6 +18,10 @@ import { CACHE_KEYS } from '../types/cache.types';
 
 type ExcelRow = (string | number | null)[];
 
+const escapeRegex = (str: string): string => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 const parseRow = (row: ExcelRow): Partial<IApprehension> | null => {
   if (!row || row.length < 10 || !row[7]) return null;
 
@@ -91,25 +95,26 @@ const buildFilterQuery = (filters: ApprehensionFilters): ApprehensionFilterQuery
   }
 
   if (filters.agency) {
-    query.agency = { $regex: filters.agency, $options: 'i' };
+    query.agency = { $regex: escapeRegex(filters.agency), $options: 'i' };
   }
 
   if (filters.violation) {
-    query.violation = { $regex: filters.violation, $options: 'i' };
+    query.violation = { $regex: escapeRegex(filters.violation), $options: 'i' };
   }
 
   if (filters.mvType) {
-    query.mvType = { $regex: filters.mvType, $options: 'i' };
+    query.mvType = { $regex: escapeRegex(filters.mvType), $options: 'i' };
   }
 
   if (filters.plateNumber) {
-    query.plateNumber = { $regex: filters.plateNumber, $options: 'i' };
+    query.plateNumber = { $regex: escapeRegex(filters.plateNumber), $options: 'i' };
   }
 
   if (filters.driverName) {
+    const escapedName = escapeRegex(filters.driverName);
     query.$or = [
-      { 'driver.lastName': { $regex: filters.driverName, $options: 'i' } },
-      { 'driver.firstName': { $regex: filters.driverName, $options: 'i' } },
+      { 'driver.lastName': { $regex: escapedName, $options: 'i' } },
+      { 'driver.firstName': { $regex: escapedName, $options: 'i' } },
     ];
   }
 
@@ -228,13 +233,13 @@ const buildStatsMatchStage = (filters: StatsFilters): Record<string, unknown> =>
   }
 
   if (filters.agency) {
-    match.agency = { $regex: filters.agency, $options: 'i' };
+    match.agency = { $regex: escapeRegex(filters.agency), $options: 'i' };
   }
   if (filters.violation) {
-    match.violation = { $regex: filters.violation, $options: 'i' };
+    match.violation = { $regex: escapeRegex(filters.violation), $options: 'i' };
   }
   if (filters.placeOfApprehension) {
-    match.placeOfApprehension = { $regex: filters.placeOfApprehension, $options: 'i' };
+    match.placeOfApprehension = { $regex: escapeRegex(filters.placeOfApprehension), $options: 'i' };
   }
 
   return match;
