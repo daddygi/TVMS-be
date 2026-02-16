@@ -62,6 +62,9 @@ export interface TimePatternsResponse {
 export interface SummaryFilters {
   dateFrom?: Date;
   dateTo?: Date;
+  agency?: string;
+  violation?: string;
+  placeOfApprehension?: string;
   comparePrevious?: boolean;
 }
 

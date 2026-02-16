@@ -108,11 +108,14 @@ export const getSummaryController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { dateFrom, dateTo, comparePrevious } = req.query;
+    const { dateFrom, dateTo, agency, violation, placeOfApprehension, comparePrevious } = req.query;
 
     const filters: SummaryFilters = {
       dateFrom: parseDate(dateFrom),
       dateTo: parseDate(dateTo),
+      agency: agency as string,
+      violation: violation as string,
+      placeOfApprehension: placeOfApprehension as string,
       comparePrevious: comparePrevious === 'true',
     };
 

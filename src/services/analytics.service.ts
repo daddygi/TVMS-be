@@ -190,17 +190,29 @@ export const getSummary = async (filters: SummaryFilters): Promise<SummaryRespon
   const previousTo = new Date(currentFrom.getTime() - 1);
   const previousFrom = new Date(previousTo.getTime() - durationMs);
 
+  // Build base filter for non-date fields
+  const baseMatch: Record<string, unknown> = {};
+  if (filters.agency) {
+    baseMatch.agency = { $regex: escapeRegex(filters.agency), $options: 'i' };
+  }
+  if (filters.violation) {
+    baseMatch.violation = { $regex: escapeRegex(filters.violation), $options: 'i' };
+  }
+  if (filters.placeOfApprehension) {
+    baseMatch.placeOfApprehension = { $regex: escapeRegex(filters.placeOfApprehension), $options: 'i' };
+  }
+
   // Single aggregation for both periods
   const [result] = await Apprehension.aggregate<SummaryAggResult>([
     {
       $facet: {
         currentCount: [
-          { $match: { dateOfApprehension: { $gte: currentFrom, $lte: currentTo } } },
+          { $match: { ...baseMatch, dateOfApprehension: { $gte: currentFrom, $lte: currentTo } } },
           { $count: 'count' },
         ],
         previousCount: filters.comparePrevious
           ? [
-              { $match: { dateOfApprehension: { $gte: previousFrom, $lte: previousTo } } },
+              { $match: { ...baseMatch, dateOfApprehension: { $gte: previousFrom, $lte: previousTo } } },
               { $count: 'count' },
             ]
           : [{ $limit: 0 }],
