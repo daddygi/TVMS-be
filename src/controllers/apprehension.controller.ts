@@ -5,6 +5,7 @@ import {
   getApprehensionById,
   getStats,
   createApprehension,
+  bulkCreateApprehensions,
   updateApprehension,
   deleteApprehension,
 } from '../services/apprehension.service';
@@ -139,6 +140,25 @@ export const createApprehensionController = async (
 
     const data = await createApprehension(parsed.data);
     res.status(201).json({ data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const bulkCreateController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { records } = req.body;
+
+    if (!Array.isArray(records) || records.length === 0) {
+      throw new AppError(400, 'Request body must contain a non-empty "records" array');
+    }
+
+    const result = await bulkCreateApprehensions(records);
+    res.status(200).json({ data: result });
   } catch (error) {
     next(error);
   }

@@ -4,11 +4,13 @@ import {
   IApprehension,
   IApprehensionDocument,
   ImportResult,
+  BulkImportResult,
   ApprehensionFilters,
   StatsFilters,
   StatsResponse,
   CreateApprehensionInput,
   UpdateApprehensionInput,
+  createApprehensionSchema,
 } from '../types/apprehension.types';
 import { PaginationParams, PaginatedResponse } from '../types/pagination.types';
 import { ApprehensionFilterQuery } from '../types/mongo.types';
@@ -169,6 +171,44 @@ export const createApprehension = async (
   await invalidateListCache();
 
   return apprehension;
+};
+
+export const bulkCreateApprehensions = async (
+  rows: unknown[]
+): Promise<BulkImportResult> => {
+  const validRecords: (CreateApprehensionInput & { daysInterval: number })[] = [];
+  const errors: BulkImportResult['errors'] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const parsed = createApprehensionSchema.safeParse(rows[i]);
+
+    if (!parsed.success) {
+      const message = parsed.error.issues
+        .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        .join(', ');
+      errors.push({ row: i + 1, error: message });
+      continue;
+    }
+
+    const daysInterval = calculateDaysInterval(
+      parsed.data.dateOfSubmission,
+      parsed.data.dateOfApprehension
+    );
+
+    validRecords.push({ ...parsed.data, daysInterval });
+  }
+
+  if (validRecords.length > 0) {
+    await Apprehension.insertMany(validRecords, { ordered: false });
+    await invalidateListCache();
+  }
+
+  return {
+    total: rows.length,
+    imported: validRecords.length,
+    failed: errors.length,
+    errors,
+  };
 };
 
 export const updateApprehension = async (

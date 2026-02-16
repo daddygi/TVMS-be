@@ -6,6 +6,7 @@ import {
   getApprehension,
   getStatsController,
   createApprehensionController,
+  bulkCreateController,
   updateApprehensionController,
   deleteApprehensionController,
 } from '../../controllers/apprehension.controller';
@@ -34,6 +35,7 @@ router.get(
 );
 
 router.post('/', createApprehensionController);
+router.post('/bulk', bulkCreateController);
 router.post('/import', upload.single('file'), importApprehensions);
 
 router.patch('/:id', updateApprehensionController);

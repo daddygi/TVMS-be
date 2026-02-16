@@ -97,6 +97,18 @@ export interface ImportResult {
   skipped: number;
 }
 
+export interface BulkImportRowError {
+  row: number;
+  error: string;
+}
+
+export interface BulkImportResult {
+  total: number;
+  imported: number;
+  failed: number;
+  errors: BulkImportRowError[];
+}
+
 export interface ApprehensionFilters {
   dateFrom?: Date;
   dateTo?: Date;
